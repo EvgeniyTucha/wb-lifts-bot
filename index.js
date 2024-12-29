@@ -34,14 +34,14 @@ const process = async () => {
     const StealthPlugin = require('puppeteer-extra-plugin-stealth');
     puppeteer.use(StealthPlugin());
     const browser = await puppeteer.launch(!IS_PROD ? {headless: false} : {args: ['--no-sandbox', '--disable-setuid-sandbox']});
-    let parse = require('csv-parse')
-
-    const now = new Date();
 
     try {
         const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-        await page.goto(siteInfo.WB_URL);
+        const response = await page.goto(siteInfo.WB_URL);
+        console.log(response.status());
+        console.log(response.headers());
 
         // Extract data
         const lifts = await page.evaluate(() => {
@@ -80,7 +80,7 @@ const process = async () => {
 
         fs.writeFileSync(filePath, liftsJson, "utf8");
 
-        logStep(diff);
+        logStep(JSON.stringify(diff, null, 2));
 
         if (diff.length > 0) {
             let message = new Date().toLocaleString() + '\n';
