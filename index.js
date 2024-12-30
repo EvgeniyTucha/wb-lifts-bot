@@ -46,7 +46,7 @@ const process = async () => {
         const page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-        const response = await page.goto(siteInfo.WB_URL);
+        await page.goto(siteInfo.WB_URL);
 
         // Extract the content of the relevant script tag
         const lifts = await page.evaluate(() => {
@@ -132,5 +132,6 @@ function getStatusForType(type) {
         await process();
     } catch (err) {
         console.error(err);
+        await sendTelegramNotification(`Huston we have a problem: ${err}. \n Script stopped`);
     }
 })();

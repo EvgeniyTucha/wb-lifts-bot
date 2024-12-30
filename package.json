@@ -1,28 +1,27 @@
 {
   "name": "wb-lifts-bot",
   "version": "1.0.0",
-  "description": "This is to help me in getting notified when there's an earliest appointment slot",
+  "description": "This is to get a Telegram notification bot once the lift status on WB changes.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "concurrently \"node index.js\""
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/theoomoregbee/US-visa-appointment-notifier.git"
+    "url": "git+https://github.com/EvgeniyTucha/wb-lifts-bot.git"
   },
   "keywords": [
-    "USA",
-    "visa",
-    "appointment",
-    "scheduling"
+    "WB",
+    "lifts",
+    "notifier"
   ],
-  "author": "Theophilus Omoregbee <theo4u@ymail.com>",
+  "author": "Yevhen Tucha <jacksonn0053@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/theoomoregbee/US-visa-appointment-notifier/issues"
+    "url": "https://github.com/EvgeniyTucha/wb-lifts-bot/issues"
   },
-  "homepage": "https://github.com/theoomoregbee/US-visa-appointment-notifier#readme",
+  "homepage": "https://github.com/EvgeniyTucha/wb-lifts-bot#readme",
   "dependencies": {
     "cheerio": "^1.0.0",
     "csv-parse": "^5.6.0",
