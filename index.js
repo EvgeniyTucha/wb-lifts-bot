@@ -20,6 +20,13 @@ const typeToEmoji = {
     triple: "🚡"
 };
 
+const numberToStatus = {
+    0: "Closed",
+    1: "Open",
+    2: "On-Hold",
+    3: "Scheduled"
+};
+
 const botToken = config.telegram.NOTIFY_TG_TOKEN;
 const chatId = config.telegram.NOTIFY_TG_CHAT_ID;
 const bot = new TelegramBot(botToken, {polling: true});
@@ -40,29 +47,26 @@ const process = async () => {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
         const response = await page.goto(siteInfo.WB_URL);
-        console.log(response.status());
-        console.log(response.headers());
 
-        // Extract data
+        // Extract the content of the relevant script tag
         const lifts = await page.evaluate(() => {
-            const results = [];
-            // Select the parent element for each lift
-            const liftContainers = document.querySelectorAll('.liftStatus__lifts__row'); // Adjust selector to match lift structure
-
-            liftContainers.forEach(lift => {
-                const name = lift.querySelector('.liftStatus__lifts__row__title')?.innerText.trim(); // Adjust selector for lift name
-                const srOnlyDivs = lift.querySelectorAll('.sr-only');
-
-                if (srOnlyDivs.length === 2) {
-                    const type = srOnlyDivs[0]?.innerText.trim();
-                    const status = srOnlyDivs[1]?.innerText.trim();
-
-                    results.push({name, type, status});
+            // Find all script tags
+            const scriptTags = document.querySelectorAll('script[type="module"]');
+            for (let script of scriptTags) {
+                if (script.textContent.includes('FR.TerrainStatusFeed')) {
+                    // Extract and evaluate the JavaScript object
+                    const scriptContent = script.textContent;
+                    const jsonMatch = scriptContent.match(/FR\.TerrainStatusFeed\s*=\s*(\{[\s\S]*?});/);
+                    if (jsonMatch && jsonMatch[1]) {
+                        const fullData = JSON.parse(jsonMatch[1]);
+                        // Return only the "Lifts" part
+                        return fullData.Lifts || null;
+                    }
                 }
-            });
-
-            return results;
+            }
+            return null; // Return null if not found
         });
+
 
         const filePath = './lifts_state.json';
 
@@ -85,7 +89,8 @@ const process = async () => {
         if (diff.length > 0) {
             let message = new Date().toLocaleString() + '\n';
             for (let i = 0; i < diff.length; i++) {
-                message += getEmojiForType(diff[i].type) + diff[i].name + ' is now ' + diff[i].status + '\n'
+                let curr = diff[i];
+                message += getEmojiForType(curr.Type) + curr.Name + ' is now ' + getStatusForType(curr.Status) + '. Close time : ' + curr.CloseTime + '\n'
             }
             await sendTelegramNotification(message);
         }
@@ -107,7 +112,7 @@ const process = async () => {
 }
 
 function isEqual(obj1, obj2) {
-    return obj1.name === obj2.name && obj1.status === obj2.status;
+    return obj1.Name === obj2.Name && obj1.Status === obj2.Status;
 }
 
 function findDifference(arr1, arr2) {
@@ -116,6 +121,10 @@ function findDifference(arr1, arr2) {
 
 function getEmojiForType(type) {
     return typeToEmoji[type] || "❓"; // Default to ❓ if type is unknown
+}
+
+function getStatusForType(type) {
+    return numberToStatus[type] || "Unknown";
 }
 
 (async () => {
