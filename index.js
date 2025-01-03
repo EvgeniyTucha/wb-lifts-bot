@@ -7,7 +7,9 @@ const {delay, logStep, debug} = require('./utils');
 const {
     siteInfo,
     IS_PROD,
-    NEXT_SCHEDULE_POLL_MIN
+    NEXT_SCHEDULE_POLL_MIN,
+    SLEEP_HOUR,
+    WAKEUP_HOUR
 } = require('./config');
 const config = require("./config");
 
@@ -41,66 +43,69 @@ const process = async () => {
     puppeteer.use(StealthPlugin());
     const browser = await puppeteer.launch(!IS_PROD ? {headless: false} : {args: ['--no-sandbox', '--disable-setuid-sandbox']});
 
-    try {
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+    const now = new Date();
+    const currentHour = now.getHours()
+    if (currentHour >= SLEEP_HOUR || currentHour < WAKEUP_HOUR) {
+        logStep("After hours, doing nothing")
+    } else {
+        try {
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-        await page.goto(siteInfo.WB_URL);
+            await page.goto(siteInfo.WB_URL);
 
-        // Extract the content of the relevant script tag
-        const lifts = await page.evaluate(() => {
-            // Find all script tags
-            const scriptTags = document.querySelectorAll('script[type="module"]');
-            for (let script of scriptTags) {
-                if (script.textContent.includes('FR.TerrainStatusFeed')) {
-                    // Extract and evaluate the JavaScript object
-                    const scriptContent = script.textContent;
-                    const jsonMatch = scriptContent.match(/FR\.TerrainStatusFeed\s*=\s*(\{[\s\S]*?});/);
-                    if (jsonMatch && jsonMatch[1]) {
-                        const fullData = JSON.parse(jsonMatch[1]);
-                        // Return only the "Lifts" part
-                        return fullData.Lifts || null;
+            // Extract the content of the relevant script tag
+            const lifts = await page.evaluate(() => {
+                // Find all script tags
+                const scriptTags = document.querySelectorAll('script[type="module"]');
+                for (let script of scriptTags) {
+                    if (script.textContent.includes('FR.TerrainStatusFeed')) {
+                        // Extract and evaluate the JavaScript object
+                        const scriptContent = script.textContent;
+                        const jsonMatch = scriptContent.match(/FR\.TerrainStatusFeed\s*=\s*(\{[\s\S]*?});/);
+                        if (jsonMatch && jsonMatch[1]) {
+                            const fullData = JSON.parse(jsonMatch[1]);
+                            // Return only the "Lifts" part
+                            return fullData.Lifts || null;
+                        }
                     }
                 }
+                return null; // Return null if not found
+            });
+
+
+            const filePath = './lifts_state.json';
+
+            const fileData = fs.readFileSync(filePath, "utf8");
+            let lastLiftsState;
+            if (fileData !== '') {
+                lastLiftsState = JSON.parse(fileData);
+            } else {
+                lastLiftsState = [];
             }
-            return null; // Return null if not found
-        });
 
+            const diff = findDifference(lifts, lastLiftsState);
 
-        const filePath = './lifts_state.json';
+            let liftsJson = JSON.stringify(lifts, null, 2);
 
-        const fileData = fs.readFileSync(filePath, "utf8");
-        let lastLiftsState;
-        if (fileData !== '') {
-            lastLiftsState = JSON.parse(fileData);
-        } else {
-            lastLiftsState = [];
+            fs.writeFileSync(filePath, liftsJson, "utf8");
+
+            logStep(`diff from last update: ${JSON.stringify(diff, null, 2)}`);
+
+            if (diff.length > 0) {
+                let message = new Date().toLocaleString() + '\n';
+                for (let i = 0; i < diff.length; i++) {
+                    let curr = diff[i];
+                    message += getEmojiForType(curr.Type) + curr.Name + ' is now ' + getStatusForType(curr.Status) + '. Hours of operation : ' + curr.OpenTime + ' - ' + curr.CloseTime + '\n'
+                }
+                await sendTelegramNotification(message);
+            }
+        } catch (err) {
+            console.error(err);
+            await sendTelegramNotification(`Huston we have a problem: ${err}`);
         }
 
-        const diff = findDifference(lifts, lastLiftsState);
-
-        let liftsJson = JSON.stringify(lifts, null, 2);
-
-        fs.writeFileSync(filePath, liftsJson, "utf8");
-
-        logStep(`diff from last update: ${JSON.stringify(diff, null, 2)}`);
-
-        if (diff.length > 0) {
-            let message = new Date().toLocaleString() + '\n';
-            for (let i = 0; i < diff.length; i++) {
-                let curr = diff[i];
-                message += getEmojiForType(curr.Type) + curr.Name + ' is now ' + getStatusForType(curr.Status) + '. Hours of operation : '+ curr.OpenTime + ' - ' + curr.CloseTime + '\n'
-            }
-            await sendTelegramNotification(message);
-        }
-
-        await browser.close();
-
-    } catch (err) {
-        console.error(err);
-        await sendTelegramNotification(`Huston we have a problem: ${err}`);
     }
-
     await browser.close();
 
     logStep(`Sleeping for ${NEXT_SCHEDULE_POLL_MIN} minutes`)
