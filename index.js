@@ -9,7 +9,6 @@ const {
     IS_PROD,
     NEXT_SCHEDULE_POLL_MIN
 } = require('./config');
-const {th} = require("date-fns/locale");
 const config = require("./config");
 
 const typeToEmoji = {
@@ -84,7 +83,7 @@ const process = async () => {
 
         fs.writeFileSync(filePath, liftsJson, "utf8");
 
-        logStep(JSON.stringify(diff, null, 2));
+        logStep(`diff from last update: ${JSON.stringify(diff, null, 2)}`);
 
         if (diff.length > 0) {
             let message = new Date().toLocaleString() + '\n';
