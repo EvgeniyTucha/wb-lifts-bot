@@ -96,7 +96,7 @@ const process = async () => {
                 let message = new Date().toLocaleString() + '\n';
                 for (let i = 0; i < diff.length; i++) {
                     let curr = diff[i];
-                    message += getEmojiForType(curr.Type) + curr.Name + ' is now ' + getStatusForType(curr.Status) + '. Hours of operation : ' + curr.OpenTime + ' - ' + curr.CloseTime + '\n'
+                    message += getEmojiForType(curr.Type) + '*' + curr.Name + '* is now *' + getStatusForType(curr.Status) + '*\n Hours of operation : ' + curr.OpenTime + ' - ' + curr.CloseTime + '\n\n'
                 }
                 await sendTelegramNotification(message);
             }
