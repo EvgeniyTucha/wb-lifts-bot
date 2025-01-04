@@ -1,7 +1,9 @@
 const puppeteer = require('puppeteer-extra');
 require('dotenv').config();
 const fs = require('fs');
+const {format} = require('date-fns')
 const TelegramBot = require('node-telegram-bot-api');
+const dateFormat = 'dd-MM-yyyy HH:mm';
 
 const {delay, logStep, debug} = require('./utils');
 const {
@@ -33,7 +35,7 @@ const chatId = config.telegram.NOTIFY_TG_CHAT_ID;
 const bot = new TelegramBot(botToken, {polling: true});
 
 const sendTelegramNotification = async (message) => {
-    bot.sendMessage(chatId, message)
+    bot.sendMessage(chatId, message, {parse_mode: 'html'})
         .then(() => console.log('Notification sent!'))
         .catch((err) => console.error('Error sending notification:', err));
 };
@@ -93,10 +95,10 @@ const process = async () => {
             logStep(`diff from last update: ${JSON.stringify(diff, null, 2)}`);
 
             if (diff.length > 0) {
-                let message = new Date().toLocaleString() + '\n';
+                let message = format(new Date(), dateFormat) + '\n\n';
                 for (let i = 0; i < diff.length; i++) {
                     let curr = diff[i];
-                    message += getEmojiForType(curr.Type) + '*' + curr.Name + '* is now *' + getStatusForType(curr.Status) + '*\n Hours of operation : ' + curr.OpenTime + ' - ' + curr.CloseTime + '\n\n'
+                    message += getEmojiForType(curr.Type) + '<b>' + curr.Name + '</b> is now <b>' + getStatusForType(curr.Status) + '</b>\n Hours of operation : ' + curr.OpenTime + ' - ' + curr.CloseTime + '\n\n'
                 }
                 await sendTelegramNotification(message);
             }
