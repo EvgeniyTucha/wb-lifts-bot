@@ -104,7 +104,7 @@ const process = async () => {
             }
         } catch (err) {
             console.error(err);
-            await sendTelegramNotification(`Huston we have a problem: ${err}`);
+            // await sendTelegramNotification(`Huston we have a problem: ${err}`);
         }
 
     }
